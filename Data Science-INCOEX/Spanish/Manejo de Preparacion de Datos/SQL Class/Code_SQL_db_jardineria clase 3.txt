@@ -1,0 +1,204 @@
+-- Select the database to work with
+USE db_jardineria;
+GO
+
+
+-- 1. BASIC SELECTION AND INDIVIDUAL AGGREGATIONS
+-- --------------------------------------------------
+
+-- Retrieve all records and columns from the customer table
+SELECT * FROM cliente;
+GO
+
+-- Count total number of customers
+SELECT COUNT(*) AS total_clientes
+FROM cliente;
+
+-- Count customers who have a non-null credit limit
+SELECT COUNT(limite_credito) AS clientes_con_credito
+FROM cliente;
+
+-- Calculate the total sum of all credit limits
+SELECT SUM(limite_credito) AS total_credito
+FROM cliente;
+
+-- Calculate the average credit limit across customers
+SELECT AVG(limite_credito) AS promedio_credito
+FROM cliente;
+GO
+
+-- Find the lowest (minimum) credit limit
+SELECT MIN(limite_credito) AS credito_menos
+FROM cliente;
+GO
+
+-- Find the highest (maximum) credit limit
+SELECT MAX(limite_credito) AS credito_maximo 
+FROM cliente;
+GO
+
+
+-- 2. COMBINED AGGREGATE QUERIES
+-- --------------------------------------------------
+
+-- Combine multiple aggregate functions for customers into a single result set
+SELECT 
+    COUNT(*) AS total_clientes,
+    SUM(limite_credito) AS total_credito,
+    AVG(limite_credito) AS promedio_credito,
+    MIN(limite_credito) AS credito_minimo,
+    MAX(limite_credito) AS credito_maximo
+FROM cliente;
+
+-- Summarize orders: total count, earliest (first) date, and latest (last) date
+SELECT 
+    COUNT(*) AS total_pedidos,
+    MIN(fecha_pedido) AS primer_pedido,
+    MAX(fecha_pedido) AS ultimo_pedido
+FROM pedido;
+GO
+
+
+-- 3. GROUP BY AND HAVING CLAUSES
+-- --------------------------------------------------
+
+-- Get total orders per customer, filtering only those with more than 5 orders
+SELECT 
+    codigo_cliente,
+    COUNT(*) AS total_pedidos
+FROM pedido
+GROUP BY codigo_cliente
+HAVING COUNT(*) > 5;
+
+-- Retrieve all products
+SELECT * FROM producto;
+GO
+
+-- Group products by range/category and show the average price,
+-- filtering for ranges where the average selling price is greater than 10
+SELECT 
+    gama, 
+    AVG(precio_venta) AS promedio_precio
+FROM producto
+GROUP BY gama
+HAVING AVG(precio_venta) > 10;
+GO
+
+-- Ensure context remains in db_jardineria
+USE db_jardineria;
+
+-- 4. JOIN EXAMPLES (INNER, LEFT, RIGHT)
+-- --------------------------------------------------
+
+-- INNER JOIN: Fetch customers along with their orders (only customers with orders)
+SELECT 
+    c.nombre_cliente,
+    p.codigo_pedido,
+    p.fecha_pedido
+FROM cliente c
+INNER JOIN pedido p 
+    ON c.codigo_cliente = p.codigo_cliente;
+
+-- MULTIPLE INNER JOINS: Get details including customer name, order ID, product name, and quantity
+SELECT 
+    c.nombre_cliente,
+    p.codigo_pedido,
+    pr.nombre AS producto,
+    dp.cantidad
+FROM cliente c
+INNER JOIN pedido p 
+    ON c.codigo_cliente = p.codigo_cliente
+INNER JOIN detalle_pedido dp 
+    ON p.codigo_pedido = dp.codigo_pedido
+INNER JOIN producto pr 
+    ON dp.codigo_producto = pr.codigo_producto;
+
+-- LEFT JOIN: Show all customers and their orders (including customers with no orders)
+SELECT 
+    c.nombre_cliente,
+    p.codigo_pedido
+FROM cliente c
+LEFT JOIN pedido p 
+    ON c.codigo_cliente = p.codigo_cliente;
+
+-- LEFT JOIN WITH NULL FILTER: Find customers who have NEVER placed an order
+SELECT c.nombre_cliente
+FROM cliente c
+LEFT JOIN pedido p 
+    ON c.codigo_cliente = p.codigo_cliente
+WHERE p.codigo_pedido IS NULL;
+
+-- RIGHT JOIN: Show all orders, including associated customer names if available
+SELECT 
+    c.nombre_cliente,
+    p.codigo_pedido
+FROM cliente c
+RIGHT JOIN pedido p 
+    ON c.codigo_cliente = p.codigo_cliente;
+
+-- MULTIPLE RIGHT JOINS: Display all orders and their line items, including product details if matched
+SELECT 
+    p.codigo_pedido,
+    pr.nombre,
+    dp.cantidad
+FROM producto pr
+RIGHT JOIN detalle_pedido dp 
+    ON pr.codigo_producto = dp.codigo_producto
+RIGHT JOIN pedido p 
+    ON dp.codigo_pedido = p.codigo_pedido;
+
+
+use db_jardineria
+--- creacion (sintaxis) de vista---
+go
+create view vista_cliente as
+select nombre_cliente, ciudad, pais from cliente;
+go
+
+select*from vista_cliente
+
+--- Ejemplo 2: Vista de productos caros
+SELECT TOP 7 nombre, precio_venta 
+FROM producto 
+ORDER BY precio_venta DESC;
+go
+create view producto_caros as
+select nombre,precio_venta from producto
+where precio_venta > 100;
+go
+
+--- Ejemlo 3: vista con inner join--- pedido nombre pedido y fecha de pedido
+create view vista_pedido_cliente as
+select 
+p.codigo_pedido,
+c.nombre_cliente,
+p.fecha_pedido
+from pedido p
+INNER JOIN cliente c on c.codigo_cliente = p.codigo_cliente;
+go
+
+select * from vista_pedido_cliente
+
+--Con CTE
+
+WITH promedio AS (
+    SELECT AVG(precio_venta) AS precio_promedio
+    FROM producto
+)
+SELECT nombre, precio_venta
+FROM producto, promedio
+WHERE precio_venta > promedio.precio_promedio;
+
+----ejemplo 4
+go
+create view total_pagos_cliente as 
+select codigo_cliente,
+	   MAX (TOTAL)
+	   AS TOTAL_PAGADO
+FROM pago
+group by codigo_cliente;
+
+select*from total_pagos_cliente;
+go
+---Eliminar una vista---
+drop view vista_predidos_clientes; go
